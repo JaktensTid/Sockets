@@ -2,14 +2,14 @@ import socket
 import signal
 import sys
 import threading
-from PyQt5.QtWidgets import QApplication, QWidget, QFrame, QLineEdit, QPushButton
+from PyQt5.QtWidgets import QApplication, QWidget, QFrame, QLineEdit
 
 BUTTON_ZERO = '0'
 BUTTON_ONE = '1'
 BUTTON_TWO = '2'
 BUTTON_THREE = '3'
-
 server_thread = None
+server = None
 
 
 def signal_handler(signal, frame):
@@ -38,7 +38,7 @@ class Server():
         self.running = True
         connection, address = self.s.accept()
         self.handler.connected(address)
-        while True:
+        while self.running:
             try:
                 data = connection.recv(1).decode('utf-8')
                 if not data:
@@ -61,31 +61,33 @@ class Window():
     def set_black(self, square):
         square.setStyleSheet('QWidget { background-color: #000000}')
 
-    def reset_color(self, square):
-        square.setStyleSheet('QWidget { background-color: #F0FFF0}')
+    def reset_squares(self):
+        self.square1.setStyleSheet('QWidget { background-color: #F0FFF0}')
+        self.square2.setStyleSheet('QWidget { background-color: #F0FFF0}')
 
-    def create(self, thread):
+    def create(self):
         app = QApplication(sys.argv)
-        w = QWidget()
-        self.textbox = QLineEdit(w)
+        self.w = QWidget()
+        self.textbox = QLineEdit(self.w)
         self.textbox.move(10, 10)
         self.textbox.resize(120, 40)
         self.textbox.setText('Not connected')
         self.textbox.setReadOnly(True)
-        self.square1 = QFrame(w)
+        self.square1 = QFrame(self.w)
         self.square1.setGeometry(10, 60, 192, 192)
-        self.square2 = QFrame(w)
+        self.square2 = QFrame(self.w)
         self.square2.setGeometry(212, 60, 192, 192)
-        self.reset_color(self.square1)
-        self.reset_color(self.square2)
-        w.resize(414, 262)
-        w.setWindowTitle('Server')
+        self.reset_squares()
+        self.w.resize(414, 262)
+        self.w.setWindowTitle('Server')
         print('Showing')
-        w.show()
+        self.w.show()
         try:
             sys.exit(app.exec_())
+            server.running = False
         except KeyboardInterrupt:
-            thread.exit()
+            print('Interruped')
+            server.running = False
 
     def connected(self, address):
         self.textbox.setText('Connected: ' + address[0])
@@ -103,10 +105,10 @@ class Window():
         if data == BUTTON_THREE:
             self.set_white(self.square1)
             self.set_white(self.square2)
+        self.w.update()
 
     def reset(self):
-        self.reset_color(self.square1)
-        self.reset_color(self.square2)
+        self.reset_squares()
         self.textbox.setText('Not connected')
 
 
@@ -115,7 +117,7 @@ def main():
     server = Server(window)
     server_thread = threading.Thread(target=server.start)
     server_thread.start()
-    window.create(server_thread)
+    window.create()
     server_thread.join()
 
 
