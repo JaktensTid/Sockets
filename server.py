@@ -30,15 +30,12 @@ class Server():
 
     def start(self):
         self.s = socket.socket()
-        try:
-            self.s.bind(('0.0.0.0', 9090))
-        except OSError:
-            self.handler.error('Port 9090 is blocked')
+        self.s.bind(('0.0.0.0', 9090))
         self._listen()
 
     def _listen(self):
         try:
-            self.s.listen(10)
+            self.s.listen(1)
         except OSError:
             self.handler.error('Two servers cannot be runned together')
         try:
@@ -48,7 +45,7 @@ class Server():
             sys.exit(0)
         while True:
             try:
-                data = connection.recv(1).decode('utf-8')
+                data = connection.recv(4).decode('utf-8')
                 if not data:
                     break
                 if data == 'c':
@@ -132,8 +129,7 @@ def main():
     server_thread = threading.Thread(target=server.start)
     server_thread.start()
     window.create()
-    server_thread.join()
-
+    #server_thread.join()
 
 if __name__ == "__main__":
     main()
