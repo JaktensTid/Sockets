@@ -22,10 +22,13 @@ class Client():
             self.running = True
 
     def press_button(self, btn):
-        self.s.send(btn.encode())
+        if self.running:
+            self.s.send(btn.encode())
 
     def close(self):
         self.running = False
+        if self.s:
+            self.s.send('c'.encode())
         self.s.close()
 
 
@@ -50,7 +53,7 @@ class Window():
         self._place_button('Button 4', 90, 110, w, BUTTON_THREE)
         self.textbox = QLineEdit(w)
         self.textbox.move(10, 10)
-        self.textbox.resize(120, 40)  # 160
+        self.textbox.resize(120, 40)
         change_address_btn = QPushButton('OK', w)
         change_address_btn.resize(30, 40)
         change_address_btn.move(140, 10)
@@ -76,7 +79,6 @@ class Window():
                 self.textbox.setText('Invalid address')
             except ConnectionRefusedError:
                 self.textbox.setText('Connection refused')
-
         return click
 
 

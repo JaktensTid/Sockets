@@ -14,6 +14,8 @@ server = None
 
 def signal_handler(signal, frame):
     print('Signal')
+    if server:
+        server.close()
     sys.exit(0)
 
 
@@ -25,30 +27,38 @@ class Server():
     def __init__(self, handler):
         self.s = None
         self.handler = handler
-        self.running = False
 
     def start(self):
         self.s = socket.socket()
-        self.s.bind(('0.0.0.0', 9090))
+        try:
+            self.s.bind(('0.0.0.0', 9090))
+        except OSError:
+            self.handler.error('Port 9090 is blocked')
         self._listen()
 
     def _listen(self):
-        self.s.listen(10)
-        print('Listening')
-        self.running = True
-        connection, address = self.s.accept()
-        self.handler.connected(address)
-        while self.running:
+        try:
+            self.s.listen(10)
+        except OSError:
+            self.handler.error('Two servers cannot be runned together')
+        try:
+            connection, address = self.s.accept()
+            self.handler.connected(address)
+        except OSError:
+            sys.exit(0)
+        while True:
             try:
                 data = connection.recv(1).decode('utf-8')
                 if not data:
                     break
-                print(data)
+                if data == 'c':
+                    self.handler.reset()
+                    self._listen()
                 self.handler.get(data)
             except ConnectionResetError:
-                print('Connection closed')
                 self.handler.reset()
                 self._listen()
+
 
     def close(self):
         self.s.close()
@@ -80,14 +90,11 @@ class Window():
         self.reset_squares()
         self.w.resize(414, 262)
         self.w.setWindowTitle('Server')
-        print('Showing')
         self.w.show()
         try:
             sys.exit(app.exec_())
-            server.running = False
-        except KeyboardInterrupt:
-            print('Interruped')
-            server.running = False
+        finally:
+            server.close()
 
     def connected(self, address):
         self.textbox.setText('Connected: ' + address[0])
@@ -111,9 +118,16 @@ class Window():
         self.reset_squares()
         self.textbox.setText('Not connected')
 
+    def error(self, message):
+        self.reset()
+        self.textbox.setText(message)
+        server.close()
+        server.start()
+
 
 def main():
     window = Window()
+    global server
     server = Server(window)
     server_thread = threading.Thread(target=server.start)
     server_thread.start()
